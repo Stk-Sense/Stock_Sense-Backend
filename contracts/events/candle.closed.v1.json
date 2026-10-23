@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stocksense.io/schemas/events/candle.closed.v1.json",
+  "title": "CandleClosedEventV1",
+  "description": "Event emitted when a candle timeframe period completes and its final OHLCV is verified",
+  "type": "object",
+  "required": [
+    "event_id",
+    "event_type",
+    "timestamp",
+    "exchange",
+    "symbol",
+    "timeframe",
+    "candle"
+  ],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique event identifier"
+    },
+    "event_type": {
+      "type": "string",
+      "const": "candle.closed.v1"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 UTC timestamp when this event was emitted"
+    },
+    "exchange": {
+      "type": "string",
+      "description": "Exchange identifier (e.g. binance, bybit)"
+    },
+    "symbol": {
+      "type": "string",
+      "description": "Standardized pair symbol (e.g. BTC/USDT)"
+    },
+    "timeframe": {
+      "type": "string",
+      "enum": ["1m", "5m", "15m", "1h", "4h", "1d"],
+      "description": "Candle timeframe interval"
+    },
+    "candle": {
+      "type": "object",
+      "required": ["ts", "open", "high", "low", "close", "volume"],
+      "properties": {
+        "ts": {
+          "type": "integer",
+          "description": "Candle open timestamp in epoch milliseconds UTC"
+        },
+        "open": {
+          "type": "number",
+          "description": "Opening price"
+        },
+        "high": {
+          "type": "number",
+          "description": "Highest price during period"
+        },
+        "low": {
+          "type": "number",
+          "description": "Lowest price during period"
+        },
+        "close": {
+          "type": "number",
+          "description": "Closing price"
+        },
+        "volume": {
+          "type": "number",
+          "description": "Traded volume in base asset"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
