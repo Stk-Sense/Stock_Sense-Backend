@@ -1,0 +1,505 @@
+openapi: 3.1.0
+info:
+  title: StockSense Market Data Service
+  description: Institutional-grade cryptocurrency historical and incremental OHLCV
+    market data service
+  version: 1.0.0
+paths:
+  /v1/health:
+    get:
+      tags:
+      - Health & Observability
+      summary: Liveness
+      description: Liveness probe indicating process is up.
+      operationId: liveness_v1_health_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+                title: Response Liveness V1 Health Get
+  /v1/ready:
+    get:
+      tags:
+      - Health & Observability
+      summary: Readiness
+      description: Readiness probe checking database connectivity and data store access.
+      operationId: readiness_v1_ready_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+                title: Response Readiness V1 Ready Get
+  /v1/metrics:
+    get:
+      tags:
+      - Health & Observability
+      summary: Prometheus Metrics
+      description: Prometheus metrics endpoint.
+      operationId: prometheus_metrics_v1_metrics_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /v1/symbols:
+    get:
+      tags:
+      - Market Catalog
+      summary: Get Symbols
+      description: List available trading symbols, timeframes, and date coverage.
+      operationId: get_symbols_v1_symbols_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SymbolsResponse'
+  /v1/candles:
+    get:
+      tags:
+      - Market Data
+      summary: Get Candles
+      description: Retrieve historical OHLCV candle data in columnar format.
+      operationId: get_candles_v1_candles_get
+      parameters:
+      - name: symbol
+        in: query
+        required: true
+        schema:
+          type: string
+          description: Pair symbol (e.g. BTC/USDT)
+          title: Symbol
+        description: Pair symbol (e.g. BTC/USDT)
+      - name: timeframe
+        in: query
+        required: true
+        schema:
+          type: string
+          description: Candle timeframe (e.g. 1h, 1d)
+          title: Timeframe
+        description: Candle timeframe (e.g. 1h, 1d)
+      - name: start
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          description: Start timestamp in epoch milliseconds (inclusive)
+          title: Start
+        description: Start timestamp in epoch milliseconds (inclusive)
+      - name: end
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          description: End timestamp in epoch milliseconds (exclusive)
+          title: End
+        description: End timestamp in epoch milliseconds (exclusive)
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 5000
+          minimum: 1
+          description: Max candles to return (capped at 5000)
+          default: 1000
+          title: Limit
+        description: Max candles to return (capped at 5000)
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ColumnarCandlesResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/data-status:
+    get:
+      tags:
+      - Market Catalog
+      summary: Get Data Status
+      description: Retrieve coverage status, record counts, and synchronization health.
+      operationId: get_data_status_v1_data_status_get
+      parameters:
+      - name: symbol
+        in: query
+        required: true
+        schema:
+          type: string
+          description: Pair symbol (e.g. BTC/USDT)
+          title: Symbol
+        description: Pair symbol (e.g. BTC/USDT)
+      - name: timeframe
+        in: query
+        required: true
+        schema:
+          type: string
+          description: Candle timeframe (e.g. 1h, 1d)
+          title: Timeframe
+        description: Candle timeframe (e.g. 1h, 1d)
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataStatusResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/admin/sync:
+    post:
+      tags:
+      - Admin Synchronization
+      summary: Trigger Sync
+      description: Trigger an incremental or historical market data sync in the background.
+      operationId: trigger_sync_v1_admin_sync_post
+      parameters:
+      - name: X-API-Key
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Api-Key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SyncRequest'
+      responses:
+        '202':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncInitiatedResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/admin/sync/{run_id}:
+    get:
+      tags:
+      - Admin Synchronization
+      summary: Get Sync Status
+      description: Query the execution status and metrics of a sync run.
+      operationId: get_sync_status_v1_admin_sync__run_id__get
+      parameters:
+      - name: run_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Run Id
+      - name: X-API-Key
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Api-Key
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncRunStatusResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+components:
+  schemas:
+    ColumnarCandlesResponse:
+      properties:
+        symbol:
+          type: string
+          title: Symbol
+        timeframe:
+          type: string
+          title: Timeframe
+        columns:
+          items:
+            type: string
+          type: array
+          title: Columns
+          default:
+          - ts
+          - open
+          - high
+          - low
+          - close
+          - volume
+        data:
+          items:
+            items:
+              anyOf:
+              - type: integer
+              - type: number
+            type: array
+          type: array
+          title: Data
+        count:
+          type: integer
+          title: Count
+        next_cursor:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Next Cursor
+      type: object
+      required:
+      - symbol
+      - timeframe
+      - data
+      - count
+      title: ColumnarCandlesResponse
+    DataStatusResponse:
+      properties:
+        exchange:
+          type: string
+          title: Exchange
+        symbol:
+          type: string
+          title: Symbol
+        timeframe:
+          type: string
+          title: Timeframe
+        first_ts:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: First Ts
+        last_ts:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Last Ts
+        total_candles:
+          type: integer
+          title: Total Candles
+          default: 0
+        status:
+          type: string
+          title: Status
+          default: IDLE
+        last_updated_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Last Updated At
+      type: object
+      required:
+      - exchange
+      - symbol
+      - timeframe
+      title: DataStatusResponse
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    SymbolCoverage:
+      properties:
+        symbol:
+          type: string
+          title: Symbol
+        timeframes:
+          items:
+            type: string
+          type: array
+          title: Timeframes
+        first_ts:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: First Ts
+        last_ts:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Last Ts
+        candle_count:
+          type: integer
+          title: Candle Count
+          default: 0
+      type: object
+      required:
+      - symbol
+      - timeframes
+      title: SymbolCoverage
+    SymbolsResponse:
+      properties:
+        exchange:
+          type: string
+          title: Exchange
+        symbols:
+          items:
+            $ref: '#/components/schemas/SymbolCoverage'
+          type: array
+          title: Symbols
+      type: object
+      required:
+      - exchange
+      - symbols
+      title: SymbolsResponse
+    SyncInitiatedResponse:
+      properties:
+        run_id:
+          type: string
+          format: uuid
+          title: Run Id
+        status:
+          type: string
+          title: Status
+          default: QUEUED
+        message:
+          type: string
+          title: Message
+          default: Sync job initiated
+      type: object
+      required:
+      - run_id
+      title: SyncInitiatedResponse
+    SyncRequest:
+      properties:
+        symbol:
+          type: string
+          title: Symbol
+          example: BTC/USDT
+        timeframe:
+          type: string
+          title: Timeframe
+          example: 1h
+        start_ts:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Start Ts
+          description: Starting epoch timestamp in milliseconds
+        end_ts:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: End Ts
+          description: Ending epoch timestamp in milliseconds
+      type: object
+      required:
+      - symbol
+      - timeframe
+      title: SyncRequest
+    SyncRunStatusResponse:
+      properties:
+        run_id:
+          type: string
+          format: uuid
+          title: Run Id
+        exchange:
+          type: string
+          title: Exchange
+        symbol:
+          type: string
+          title: Symbol
+        timeframe:
+          type: string
+          title: Timeframe
+        status:
+          type: string
+          title: Status
+        candles_added:
+          type: integer
+          title: Candles Added
+          default: 0
+        gaps_found:
+          type: integer
+          title: Gaps Found
+          default: 0
+        error:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Error
+        started_at:
+          type: string
+          format: date-time
+          title: Started At
+        finished_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Finished At
+      type: object
+      required:
+      - run_id
+      - exchange
+      - symbol
+      - timeframe
+      - status
+      - started_at
+      title: SyncRunStatusResponse
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+        input:
+          title: Input
+        ctx:
+          type: object
+          title: Context
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
